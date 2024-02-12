@@ -1,28 +1,29 @@
+// Copyright 2024 by Contributors
 #include <iostream>
 #include <vector>
 #include <climits>
-#include <sstream>
+#include <fstream>
 
-template <typename T, typename T2>
+template <typename key_type, typename value_type>
 class Node {
-public:
-    T key;
-    T2 value;
+ public:
+    key_type key;
+    value_type value;
     bool state;
 
     // Constructor
-    Node(const T& key, T2 value) : key(key), value(value), state(true) {}
+    Node(const key_type& key, value_type value) : key(key), value(value), state(true) {}
 
     // Defualt constructor
-    Node() : key(T()), value(T2()), state(true) {}
+    Node() : key(key_type()), value(value_type()), state(true) {}
 
     // Operator overloading
-    friend std::ostream& operator<<(std::ostream& os, const Node<T, T2>& node) {
+    friend std::ostream& operator<<(std::ostream& os, const Node<key_type, value_type>& node) {
         os << "Key: " << node.key << ", Value: " << node.value;
         return os;
     }
 
-    void updateValue(const T& newKey, T2 newValue) {
+    void updateValue(const key_type& newKey, value_type newValue) {
         key = newKey;
         value = newValue;
         state = true;
@@ -33,26 +34,15 @@ public:
     }
 };
 
-template <typename T, typename T2>
+template <typename key_type, typename value_type>
 class HashMap {
-private:
+ private:
     double rehashSize;
     size_t size;
     size_t sizeAllNonNullptr;
-    T defualtKey;
-    T2 defualtValue;
-    std::vector<Node<T, T2>*> arr;
-
-    // Hash function for contesst
-    int64_t hashContest(const std::string& key, int64_t p, int64_t q) const {
-        int64_t hashToReturn = 0;
-        int64_t p_Exp = 1;
-        for (size_t i = 0; i < key.length(); i++) {
-            hashToReturn = (hashToReturn + p_Exp * (key[i] - 'a' + 1)) % q;
-            p_Exp = (p_Exp * p) % q;
-        }
-        return hashToReturn % q;
-    }
+    key_type defualtKey;
+    value_type defualtValue;
+    std::vector<Node<key_type, value_type>*> arr;
 
     // Hash function for generating indices based on a string key
     size_t hashGenerate(const std::string& string, size_t tableSize, size_t key) const {
@@ -95,7 +85,7 @@ private:
     }
 
     // Find an empty index for the given key using double hashing
-    size_t findEmptyIndex(const T& key) const {
+    size_t findEmptyIndex(const key_type& key) const {
         size_t h1 = hash1(key);
         size_t h2 = hash2(key);
         size_t i = 0;
@@ -111,23 +101,8 @@ private:
         return h1;
     }
 
-    size_t findEmptyIndexContest(const T& key, int64_t p, int64_t q) const {
-        size_t h1 = hashContest(key, p, q);
-        size_t i = 0;
-
-        while (arr[h1] != nullptr && i < q) {
-            if (!arr[h1]->state) {
-                return h1;
-            }
-            h1 = (h1 + 1) % q;
-            ++i;
-        }
-
-        return h1;
-    }
-
     // Get a index to put in the hash map
-    size_t findIndex(const T& key) const {
+    size_t findIndex(const key_type& key) const {
         size_t h1 = hash1(key);
         size_t h2 = hash2(key);
         size_t i = 0;
@@ -142,7 +117,7 @@ private:
         return h1;
     }
 
-    void _add(const T& key, T2 value) {
+    void _add(const key_type& key, value_type value) {
         size_t h1 = hash1(key);
         size_t h2 = hash2(key);
 
@@ -152,9 +127,7 @@ private:
         size_t firstDeleted = 0;
 
         while (arr[h1] != nullptr && i < arr.size()) {
-
             if (arr[h1]->key == key && arr[h1]->state) {
-                //arr[h1]->value = value;
                 return;
             }
 
@@ -168,10 +141,10 @@ private:
         }
 
         if (foundFirstDeleted == false) {
-            arr[h1] = new Node<T, T2>(key, value);
+            arr[h1] = new Node<key_type, value_type>(key, value);
             sizeAllNonNullptr++;
         } else {
-            arr[firstDeleted] = new Node<T, T2>(key, value);
+            arr[firstDeleted] = new Node<key_type, value_type>(key, value);
         }
 
         size++;
@@ -181,7 +154,7 @@ private:
     void resize() {
         sizeAllNonNullptr = 0;
         size = 0;
-        std::vector<Node<T, T2>*> oldArr = arr;
+        std::vector<Node<key_type, value_type>*> oldArr = arr;
 
         arr.clear();
         arr.resize(oldArr.size() * 2, nullptr);
@@ -201,7 +174,7 @@ private:
         sizeAllNonNullptr = 0;
         size = 0;
 
-        std::vector<Node<T, T2>*> oldArr = arr;
+        std::vector<Node<key_type, value_type>*> oldArr = arr;
 
         arr.clear();
         arr.resize(oldArr.size(), nullptr);
@@ -210,62 +183,51 @@ private:
             if (oldArr[i] != nullptr) {
                 if (oldArr[i]->state) {
                     _add(oldArr[i]->key, oldArr[i]->value);
-                    delete oldArr[i]; 
+                    delete oldArr[i];
                 }
             }
         }
     }
 
-
-public:
+ public:
     // Constructor, set defualt values
-    HashMap() : rehashSize(0.75), size(0), sizeAllNonNullptr(0) { 
-        arr.resize(1000, nullptr); 
+    HashMap() : rehashSize(0.75), size(0), sizeAllNonNullptr(0) {
+        arr.resize(8, nullptr);
         setDefualtKey();
         setDefualtValue();
     }
 
     // Set defualt value for constructor
     void setDefualtValue() {
-        if constexpr (std::is_same<T2, std::string>::value) {
-            defualtValue = "Value is undefinded";
-        } else if constexpr (std::is_same<T2, int>::value) {
-            defualtValue = INT_MIN;
-        } else if constexpr (std::is_same<T2, int64_t>::value) {
-            defualtValue = LONG_MIN;
+        if constexpr (std::is_same<value_type, std::string>::value) {
+            defualtValue = '\0';
+        } else if constexpr (std::is_same<value_type, int>::value) {
+            defualtValue = '\0';
+        } else if constexpr (std::is_same<value_type, int64_t>::value) {
+            defualtValue = '\0';
         }
     }
 
     // Set defualt key for constructor
     void setDefualtKey() {
-        if constexpr (std::is_same<T, std::string>::value) {
+        if constexpr (std::is_same<key_type, std::string>::value) {
             defualtKey = "nullptr";
-        } else if constexpr (std::is_same<T, int>::value) {
+        } else if constexpr (std::is_same<key_type, int>::value) {
             defualtKey = INT_MIN;
-        } else if constexpr (std::is_same<T, int64_t>::value) {
+        } else if constexpr (std::is_same<key_type, int64_t>::value) {
             defualtKey = LONG_MIN;
         }
     }
-    
+
     // Operator overloading
-    T2& operator[](const T& key) {
+    value_type& operator[](const key_type& key) {
         size_t index = findIndex(key);
         if (arr[index] == nullptr) {
-            arr[index] = new Node<T, T2>(key, defualtValue);
+            arr[index] = new Node<key_type, value_type>(key, defualtValue);
             sizeAllNonNullptr++;
             size++;
         }
         return arr[index]->value;
-    }
-
-    // += operator
-    void operator+=(const T2& value) {
-        operator[](defualtKey) += value;
-    }
-
-    // -= operator
-    void operator-=(const T2& value) {
-        operator[](defualtKey) -= value;
     }
 
     // Comparison operator
@@ -278,18 +240,8 @@ public:
         return !isEqual(hashMap);
     }
 
-    // Increment operator
-    void operator++(int) {
-        incrementValue(defualtKey);
-    }
-
-    // Decrement operator
-    void operator--(int) {
-        decrementValue(defualtKey);
-    }
-
     // Operator output
-    friend std::ostream& operator<<(std::ostream& os, const HashMap<T, T2>& hashMap) {
+    friend std::ostream& operator<<(std::ostream& os, const HashMap<key_type, value_type>& hashMap) {
         for (size_t i = 0; i < hashMap.arr.size(); ++i) {
             os << "Index " << i << ": ";
             if (hashMap.arr[i] == nullptr || hashMap.arr[i]->empty()) {
@@ -302,102 +254,17 @@ public:
     }
 
     // Insert a key-value pair into the hash table
-    void put(const T& key, T2 value) {
+    void put(const key_type& key, value_type value) {
         if (size + 1 > rehashSize * arr.size()) {
-            //std::cout << "Work Resize!!!" << std::endl;
             resize();
         } else if (sizeAllNonNullptr > 2 * size) {
-            //std::cout << "Work Rehash!!!" << std::endl;
             rehash();
         }
         _add(key, value);
     }
 
-    // Insert a key initialization a zero value into the hash table
-    void put(const T& key) {
-        if (size + 1 > rehashSize * arr.size()) {
-            resize();
-        } else if (sizeAllNonNullptr > 2 * size) {
-            rehash();
-        }
-        _add(key, 0);
-    }
-
-    // Function for the contest
-    void putContest(const T& key, T2 value, int64_t p, int64_t q) {
-        size_t index = hashContest(key, p, q);
-
-        if (arr[index] == nullptr) {
-            arr[index] = new Node<T, T2>(key, value);
-            std::cout << "key=" << key << " hash=" << hashContest(key, p, q) << " operation=PUT result=inserted value=" << value << std::endl;
-        } else if (!arr[index]->state) {
-            arr[index] = new Node<T, T2>(key, value);
-            std::cout << "key=" << key << " hash=" << hashContest(key, p, q) << " operation=PUT result=inserted value=" << value << std::endl;
-        } else {
-            size_t collisionIndex = findEmptyIndexContest(key, p, q);
-            if (collisionIndex == hashContest(key, p, q)) {
-                std::cout << "key=" << key << " hash=" << hashContest(key, p, q) << " operation=PUT result=overflow" << std::endl;
-            } else {
-                arr[collisionIndex] = new Node<T, T2>(key, value);
-                std::cout << "key=" << key << " hash=" << hashContest(key, p, q) << " operation=PUT result=collision linear_probing=" << collisionIndex << " value=" << value << std::endl;
-            }
-        }
-    }
-
-    // Function for the contest
-    void delContest(const T& key, int64_t p, int64_t q) {
-        size_t h1 = hashContest(key, p, q);
-        size_t i = 0;
-
-        while (arr[h1] != nullptr && i < q) {
-            if (arr[h1]->key == key && arr[h1]->state && h1 == hashContest(key, p, q)) {
-                delete arr[h1];
-                arr[h1]->state = false;
-                std::cout << "key=" << key << " hash=" << hashContest(key, p, q) << " operation=DEL result=removed" << std::endl;
-                return;
-            } else if (arr[h1]->key == key && arr[h1]->state) {
-                delete arr[h1];
-                arr[h1]->state = false;
-                std::cout << "key=" << key << " hash=" << hashContest(key, p, q) << " operation=DEL result=collision linear_probing=" << h1 << " value=removed" << std::endl;
-                return;
-            }
-
-            h1 = (h1 + 1) % q;
-            ++i;
-        }
-        if(h1 == hashContest(key, p, q)) {
-            std::cout << "key=" << key << " hash=" << hashContest(key, p, q) << " operation=DEL result=no_key" << std::endl;
-        } else {
-            std::cout << "key=" << key << " hash=" << hashContest(key, p, q) << " operation=DEL result=collision linear_probing=" << h1 << " value=no_key" << std::endl;
-        }
-    }
-
-    // Function for the contest
-    void getContest(const T& key, int64_t p, int64_t q) {
-        size_t h1 = hashContest(key, p, q);
-        size_t i = 0;
-
-        while (arr[h1] != nullptr && i < q) {
-            if (arr[h1]->key == key && arr[h1]->state && h1 == hashContest(key, p, q)) {
-                std::cout << "key=" << key << " hash=" << hashContest(key, p, q) << " operation=GET result=found value=" << arr[h1]->value << std::endl;
-                return;
-            } else if (arr[h1]->key == key && arr[h1]->state) {
-                std::cout << "key=" << key << " hash=" << hashContest(key, p, q) << " operation=GET result=collision linear_probing=" << h1 << " value=" << arr[h1]->value << std::endl;
-                return;
-            }
-            h1 = (h1 + 1) % q;
-            ++i;
-        }
-        if (h1 == hashContest(key, p, q)) {
-            std::cout << "key=" << key << " hash=" << hashContest(key, p, q) << " operation=GET result=no_key" << std::endl;
-        } else {
-            std::cout << "key=" << key << " hash=" << hashContest(key, p, q) << " operation=GET result=collision linear_probing=" << h1 << " value=no_key" << std::endl;
-        }
-    
-    }
-
     // Delete a key from the hash table
-    void del(const T& key) {
+    void del(const key_type& key) {
         size_t h1 = hash1(key);
         size_t h2 = hash2(key);
         size_t i = 0;
@@ -415,24 +282,13 @@ public:
     }
 
     // Get the value associated with a key from the hash table
-    T2 get(const T& key) const {
-        size_t h1 = hash1(key);
-        size_t h2 = hash2(key);
-        size_t i = 0;
-
-        while (arr[h1] != nullptr && i < arr.size()) {
-            if (arr[h1]->key == key && arr[h1]->state) {
-                return arr[h1]->value;
-            }
-            h1 = (h1 + h2) % arr.size();
-            ++i;
-        }
-
-        return defualtValue;
+    value_type get(const key_type& key) const {
+        size_t index = findIndex(key);
+        return (arr[index] == nullptr) ? defualtValue : arr[index]->value;
     }
 
     // Check if the current hash table is equal to another hash table
-    bool isEqual(const HashMap<T, T2>& other) const {
+    bool isEqual(const HashMap<key_type, value_type>& other) const {
         for (size_t i = 0; i < arr.size(); ++i) {
             if (arr[i] == nullptr) {
                 continue;
@@ -446,55 +302,9 @@ public:
         return true;
     }
 
-    // Increment the value associated with a key
-    void incrementValue(const T& key) {
-        size_t h1 = hash1(key);
-        size_t h2 = hash2(key);
-
-        if (arr[h1] == nullptr) {
-            put(key, 1);
-        } else if (arr[h1] != nullptr && arr[h1]->key == key) {
-            arr[h1]->value++;
-        } else {
-            size_t i = 0;
-            while (arr[h1] != nullptr && i < arr.size()) {
-                if (arr[h1]->key == key) {
-                    arr[h1]->value++;
-                    return;
-                }
-                h1 = (h1 + h2) % arr.size();
-                ++i;
-            }
-            put(key, 1);
-        }
-    }
-
-    // Decrement the value associated with a key
-    void decrementValue(const T& key) {
-        size_t h1 = hash1(key);
-        size_t h2 = hash2(key);
-
-        if (arr[h1] == nullptr) {
-            put(key, 1);
-        } else if (arr[h1] != nullptr && arr[h1]->key == key) {
-            arr[h1]->value--;
-        } else {
-            size_t i = 0;
-            while (arr[h1] != nullptr && i < arr.size()) {
-                if (arr[h1]->key == key) {
-                    arr[h1]->value--;
-                    return;
-                }
-                h1 = (h1 + h2) % arr.size();
-                ++i;
-            }
-            put(key, 1);
-        }
-    }
-
     // Destructor to free memory when the hash table is destroyed (unstable)
     ~HashMap() {
-        for (Node<T, T2>* node : arr) {
+        for (Node<key_type, value_type>* node : arr) {
             if (node != nullptr) {
                 if (node->state) {
                     delete node;
@@ -521,9 +331,9 @@ public:
     }
 };
 
-// Class for some solution 
-class Solution {
-public:
+// Class for testing the HashMap
+class Test {
+ private:
     // Check if two strings are valid by comparing character frequencies
     bool isValid(std::string s, std::string t) {
         if (s.length() != t.length())
@@ -535,54 +345,24 @@ public:
         for (size_t i = 0; i < s.length(); i++) {
             std::string tempChar(1, s[i]);
             std::string tempCharT(1, t[i]);
-            ls.put(tempChar);
-            lt.put(tempCharT);
+            ls.put(tempChar, 0);
+            lt.put(tempCharT, 0);
         }
 
         for (size_t i = 0; i < s.length(); i++) {
             std::string tempChar(1, s[i]);
-            ls.incrementValue(tempChar);
+            ls[tempChar]++;
         }
 
         for (size_t i = 0; i < t.length(); i++) {
             std::string tempCharT(1, t[i]);
-            lt.incrementValue(tempCharT);
+            lt[tempCharT]++;
         }
 
         return ls.isEqual(lt);
     }
 
-    void AnswerForContest2() {
-        HashMap<std::string, int64_t> myMap;
-        std::string buff;
-        std::getline(std::cin, buff);
-
-        std::istringstream iss(buff);
-        int64_t q, p, n;
-        iss >> q >> p >> n;
-
-        for (size_t i = 0; i < n; i++) {
-            std::getline(std::cin, buff);
-            std::istringstream iss_line(buff);
-            std::string op, s;
-            int64_t value;
-            iss_line >> op >> s;
-
-            if (op == "PUT") {
-                iss_line >> value;
-                myMap.putContest(s, value, p, q);
-            } else if (op == "GET") {
-                myMap.getContest(s, p, q);
-            } else {
-                myMap.delContest(s, p, q);
-            }
-        }
-    }
-};
-
-// Class for testing the HashMap
-class Test {
-public:
+ public:
     void test1() {
         std::cout << "Test 1 start" << std::endl;
 
@@ -601,13 +381,6 @@ public:
         table.put("bar", 78);
 
         table.dump();
-
-        size_t valueToFind = table.get("foo");
-        if (valueToFind != LONG_MIN) {
-            std::cout << "Found value: " << valueToFind << "\n";
-        } else {
-            std::cout << "Key not found\n";
-        }
 
         table.put("el0", 15);
         table.put("el1", 15);
@@ -637,21 +410,22 @@ public:
         table.get("bar");
 
         table.dump();
-
-        std::cout << "Test 1 end." << std::endl; 
+        std::cout << "Test 1 end." << std::endl;
     }
 
     void test2() {
         std::cout << "Test 2:\n" << std::endl;
-        Solution solve;
         std::string str1 = "555", str2 = "555";
 
         std::cout << "First string: " << str1 << std::endl;
         std::cout << "Second string: " << str2 << std::endl;
 
         std::cout << "Result: ";
-        if (solve.isValid(str1, str2)) std::cout << "Correct" << std::endl;
-        else std::cout << "Uncorrect" << std::endl;
+        if (isValid(str1, str2)) {
+            std::cout << "Correct" << std::endl;
+        } else {
+            std::cout << "Uncorrect" << std::endl;
+        }
     }
 
     void test3() {
@@ -680,53 +454,24 @@ public:
 
     void test4() {
         std::cout << "Test 4:\n" << std::endl;
-        HashMap<int64_t, int64_t> table;
-        for (int64_t i = 1; i < 11; i++) {
-            table[i] = i;
-        }
-        std::cout << table << std::endl;
-    }
-
-    void test5() {
-        std::cout << "Test 5:\n" << std::endl;
-        HashMap<int, int> table;
-        for (int i = 1; i < 11; i++) {
-            table[i] = i;
-        }
-        std::cout << (table.get(1000) == INT_MIN) << std::endl;
-        std::cout << table << std::endl;
-    }
-
-    void test6() {
-        std::cout << "Test 6:\n" << std::endl;
         HashMap<std::string, std::string> table;
         table["dog"] = "WOW";
         table["cat"] = "MEOW";
-        std::cout << table.get("sheep") << std::endl;
+        std::cout << "key: sheep - value: " << table.get("sheep") << std::endl;
+        std::cout << "key: 1234 - value: " << table.get("1234") << std::endl;
     }
-
-    void test7() {
-        Solution solve;
-        solve.AnswerForContest2();
-    }
-
 };
 
 int main() {
     Test test;
-    test.test1(); //github test
+    test.test1();  // github test
     std::cout << "---------" << std::endl;
-    test.test2(); //compare two string
+    test.test2();  // compare two string
     std::cout << "---------" << std::endl;
-    test.test3(); //overtaking operator
+    test.test3();  // overtaking operator
     std::cout << "---------" << std::endl;
-    test.test4(); //Pair <int64_t, int64_t>
+    test.test4();  // Pair <string, string> + uncorrect key
     std::cout << "---------" << std::endl;
-    test.test5(); //Pair <int, int> + uncorrect key
-    std::cout << "---------" << std::endl;
-    test.test6(); //Pair <string, string> + uncorrect key
-    std::cout << "---------" << std::endl;
-    test.test7(); // Contest B answer
-    std::cout << "---------" << std::endl;
+
     return 0;
 }
