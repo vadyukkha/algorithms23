@@ -1,6 +1,6 @@
 .PHONY: help
 
-all: DisjointSet Hashmap Heap LinkedList PriorityQueue Queue Stack_array Stack_linkedList # Build all targets
+all: DisjointSet Hashmap Heap LinkedList PriorityQueue Queue Stack_array Stack_linkedList Graph # Build all targets
 
 help: # Show help for each of the Makefile recipes.
 	@printf "\n"
@@ -31,5 +31,8 @@ Stack_array: Stack_array.cpp
 Stack_linkedList: Stack_linkedList.cpp 
 	g++ -std=c++20 Stack_linkedList.cpp -o Stack_linkedList
 
+Graph: Graph.cpp
+	g++ -std=c++20 Graph.cpp -o Graph
+
 clean: # Delete all builded files
-	rm -f DisjointSet Hashmap Heap LinkedList PriorityQueue Queue Stack_array Stack_linkedList
+	rm -f DisjointSet Hashmap Heap LinkedList PriorityQueue Queue Stack_array Stack_linkedList Graph
