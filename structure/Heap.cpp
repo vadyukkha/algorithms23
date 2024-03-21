@@ -90,11 +90,9 @@ int main() {
     }
     
     BinaryMinHeap<int64_t> minHeap(arrayToHeap);
-    //minHeap.HeapifyContest(arrayToHeap);
 
     std::cout << "Min element: " << minHeap.getMin() << std::endl;
 
-    //minHeap.heapSort();
     std::sort_heap(arrayToHeap.begin(), arrayToHeap.end());
 
     std::cout << "Sorted elements: ";
